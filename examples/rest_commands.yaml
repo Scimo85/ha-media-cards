@@ -77,3 +77,62 @@ rest_command:
     content_type: "application/x-www-form-urlencoded"
     payload: "hashes={{ hashes }}&deleteFiles={{ 'true' if file | default(false) else 'false' }}"
     timeout: 30
+
+  # --- Solo per qbit-search-card (ricerca con i plugin di ricerca di qBittorrent) ---
+  # In qBittorrent: Visualizza › Motore di ricerca, e installare almeno un plugin di ricerca.
+  # Le ricerche sono legate alla sessione: la card passa il cookie restituito da "avvia" (variabile sid).
+
+  qbittorrent_cerca_avvia:
+    url: "http://192.168.1.10:8085/api/v2/search/start"
+    method: post
+    content_type: "application/x-www-form-urlencoded"
+    payload: "pattern={{ testo | urlencode }}&plugins=enabled&category={{ categoria | default('all') | urlencode }}"
+    timeout: 30
+
+  qbittorrent_cerca_risultati:
+    url: "http://192.168.1.10:8085/api/v2/search/results"
+    method: post
+    content_type: "application/x-www-form-urlencoded"
+    payload: "id={{ id }}&limit=500&offset=0"
+    headers:
+      Cookie: "{{ sid | default('') }}"
+    timeout: 30
+
+  qbittorrent_cerca_elimina:
+    url: "http://192.168.1.10:8085/api/v2/search/delete"
+    method: post
+    content_type: "application/x-www-form-urlencoded"
+    payload: "id={{ id }}"
+    headers:
+      Cookie: "{{ sid | default('') }}"
+    timeout: 30
+
+  qbittorrent_cerca_plugin:
+    url: "http://192.168.1.10:8085/api/v2/search/plugins"
+    method: get
+    timeout: 30
+
+  # Elenca le sottocartelle (scelta della serie esistente)
+  qbittorrent_cartelle:
+    url: "http://192.168.1.10:8085/api/v2/app/getDirectoryContent"
+    method: post
+    content_type: "application/x-www-form-urlencoded"
+    payload: "dirPath={{ percorso | urlencode }}&mode=dirs"
+    timeout: 30
+
+  # Aggiunge un torrent/magnet; cartella = percorso di salvataggio visto da qBittorrent
+  qbittorrent_aggiungi:
+    url: "http://192.168.1.10:8085/api/v2/torrents/add"
+    method: post
+    content_type: "application/x-www-form-urlencoded"
+    payload: "urls={{ url | urlencode }}{% if cartella | default('') %}&savepath={{ cartella | urlencode }}&autoTMM=false{% endif %}"
+    timeout: 30
+
+  # Alcuni plugin danno come link la pagina del torrent e non il file: la card la legge e ne estrae il magnet.
+  # Nota: fa una GET verso qualunque indirizzo le venga passato.
+  qbittorrent_pagina:
+    url: "{{ url }}"
+    method: get
+    headers:
+      User-Agent: "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+    timeout: 30

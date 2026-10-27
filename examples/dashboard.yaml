@@ -60,3 +60,13 @@ title: Giochi
 romm_url: http://192.168.1.10:8093
 romm_url_remote: ""            # opzionale: indirizzo usato fuori casa (es. Tailscale)
 refresh_minutes: 5
+---
+# Ricerca torrent con i plugin di qBittorrent e scelta della cartella di destinazione
+type: custom:qbit-search-card
+title: Cerca e scarica
+max_results: 40
+timeout_seconds: 40
+film_path: /downloads/film          # percorsi visti dal container qBittorrent
+series_path: /downloads/serietv     # (una sottocartella per serie)
+music_path: /downloads/musica
+games_path: /downloads/giochi

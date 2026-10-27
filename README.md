@@ -14,6 +14,7 @@ condivise così come sono. Testi dell'interfaccia in italiano.
 | `radio-card` | ~1.500 radio italiane, ricerca, preferite per utente; suona nel browser, su Alexa o altri lettori | `scripts/radio_sync.py` |
 | `music-card` | Album e artisti con copertine; ascolto nel browser (anche a schermo bloccato) o su un dispositivo | Jellyfin + `scripts/music_sync.py` |
 | `romm-games-card` | Console divise per marca, giochi con copertine; "Gioca" nel browser | [RomM](https://github.com/rommapp/romm) + `scripts/romm_sync.py` |
+| `qbit-search-card` | Ricerca con i plugin di qBittorrent, filtro per categoria e "solo ITA", scelta della cartella (Film, Serie TV › serie, Musica, Giochi) e avvio del download | qBittorrent con WebUI e plugin di ricerca |
 | `aurora-plus-card` | Aggiunge una pagina **Media** alla barra della card [Aurora Glass v3](https://github.com/lucalux00/aurora-glass-v3), con dentro le card qui sopra | Aurora Glass v3 (non inclusa) |
 
 ## Installazione
