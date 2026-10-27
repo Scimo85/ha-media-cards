@@ -6,6 +6,19 @@ film e serie, TV in diretta, radio, musica e giochi retrò, da telefono, PC o di
 Sono card "fatte in casa" (JavaScript puro, nessuna dipendenza), nate per il mio server domestico e
 condivise così come sono. Testi dell'interfaccia in italiano.
 
+<p align="center">
+  <img src="docs/screenshots/film.jpg" width="240" alt="Catalogo film e in riproduzione">
+  <img src="docs/screenshots/film-scheda.jpg" width="240" alt="Scheda di una serie">
+  <img src="docs/screenshots/tv.jpg" width="240" alt="TV in diretta">
+</p>
+<p align="center">
+  <img src="docs/screenshots/giochi.jpg" width="240" alt="Giochi (RomM)">
+  <img src="docs/screenshots/ricerca.jpg" width="240" alt="Ricerca torrent">
+  <img src="docs/screenshots/download-attivo.jpg" width="240" alt="Download in corso">
+</p>
+
+<sub>Qui dentro la plancia Aurora Glass v3 (con <code>aurora-plus-card</code>); titoli, locandine e nomi dei dispositivi sono sfocati.</sub>
+
 | Card | Cosa fa | Richiede |
 |---|---|---|
 | `media-catalog-card` | Catalogo film/serie con locandine, trama, voto; scelta stagione/episodio; **Riproduci** su un dispositivo; **Elimina** (opzionale) | Jellyfin + integrazione Jellyfin di HA |
