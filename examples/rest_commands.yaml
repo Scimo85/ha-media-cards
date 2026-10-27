@@ -1,0 +1,79 @@
+# Da incollare in configuration.yaml di Home Assistant (sezione rest_command:).
+# Sostituire 192.168.1.10 con l'indirizzo del vostro server Jellyfin / qBittorrent.
+# In secrets.yaml:  jellyfin_auth: 'MediaBrowser Token="<chiave API di Jellyfin>"'
+#   (Jellyfin › Pannello di controllo › Chiavi API › +)
+# Dopo averli aggiunti: Strumenti per sviluppatori › YAML › ricarica "Comandi REST".
+
+rest_command:
+  # Canali Live TV con il programma in onda (livetv-card). userId = id del vostro utente Jellyfin
+  # (Pannello di controllo › Utenti › apri l'utente: è nell'indirizzo della pagina, userId=...)
+  jellyfin_livetv_canali:
+    url: "http://192.168.1.10:8096/LiveTv/Channels?userId=<ID_UTENTE>&addCurrentProgram=true&enableUserData=false&enableImages=false&sortBy=SortName"
+    method: get
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 20
+
+  # Trama, generi, anno, voto di un titolo (media-catalog-card); ids separati da virgola
+  jellyfin_dettagli:
+    url: "http://192.168.1.10:8096/Items?ids={{ ids }}&fields=Overview,Genres"
+    method: get
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 20
+
+  # Sessioni Jellyfin attive (jellyfin-now-card, script dei dispositivi)
+  jellyfin_sessioni:
+    url: "http://192.168.1.10:8096/Sessions?activeWithinSeconds={{ secondi | default(120) }}"
+    method: get
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 10
+
+  # Avvia un titolo su una sessione Jellyfin (script dei dispositivi)
+  jellyfin_riproduci:
+    url: "http://192.168.1.10:8096/Sessions/{{ sessione }}/Playing?playCommand=PlayNow&itemIds={{ media_id }}"
+    method: post
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 10
+
+  # Stop / Pause / Unpause a una sessione (jellyfin-now-card)
+  jellyfin_comando:
+    url: "http://192.168.1.10:8096/Sessions/{{ sessione }}/Playing/{{ comando }}"
+    method: post
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 10
+
+  # --- Solo per il pulsante "Elimina" di media-catalog-card e music-card ---
+  # ATTENZIONE: jellyfin_elimina cancella davvero i file dal disco.
+
+  jellyfin_percorsi:
+    url: "http://192.168.1.10:8096/Items?Recursive=true&IncludeItemTypes=Movie,Series&fields=Path"
+    method: get
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 20
+
+  jellyfin_elimina:
+    url: "http://192.168.1.10:8096/Items/{{ media_id }}"
+    method: delete
+    headers:
+      Authorization: !secret jellyfin_auth
+    timeout: 60
+
+  # qBittorrent: servono solo se scaricate con qBittorrent e volete togliere anche il torrent.
+  # La WebUI di qBittorrent deve accettare le richieste di HA senza login
+  # (Opzioni › Web UI › "Ignora l'autenticazione per i client in queste sottoreti" con l'IP di HA).
+  qbittorrent_torrent:
+    url: "http://192.168.1.10:8085/api/v2/torrents/info"
+    method: get
+    timeout: 30
+
+  qbittorrent_elimina:
+    url: "http://192.168.1.10:8085/api/v2/torrents/delete"
+    method: post
+    content_type: "application/x-www-form-urlencoded"
+    payload: "hashes={{ hashes }}&deleteFiles={{ 'true' if file | default(false) else 'false' }}"
+    timeout: 30

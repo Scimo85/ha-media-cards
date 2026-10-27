@@ -1,0 +1,72 @@
+# Esempio di script per far partire un titolo sulla TV da media-catalog-card / livetv-card / music-card.
+# Da adattare: qui una TV LG webOS (integrazione LG webOS) accesa via Wake-on-LAN, con l'app Jellyfin.
+# Va in scripts.yaml. Richiede i rest_command jellyfin_sessioni e jellyfin_riproduci.
+# DEVICE_NAME = nome del dispositivo come lo vede Jellyfin (Pannello di controllo › Dispositivi).
+
+jellyfin_tv:
+  alias: Jellyfin - riproduci sulla TV
+  mode: restart
+  fields:
+    media_id:
+      description: Id Jellyfin del film, episodio o canale
+      required: true
+      selector:
+        text: {}
+    media_type:
+      default: movie
+      selector:
+        select:
+          options: [movie, episode, channel, music]
+  sequence:
+    - alias: Accendi la TV se è spenta
+      if:
+        - condition: state
+          entity_id: media_player.tv
+          state: ["off", unavailable, unknown]
+      then:
+        - action: switch.turn_on
+          target:
+            entity_id: switch.tv_wol
+        - wait_for_trigger:
+            - trigger: state
+              entity_id: media_player.tv
+              to: "on"
+          timeout: "00:00:45"
+          continue_on_timeout: false
+    - alias: Apri l'app Jellyfin
+      if:
+        - condition: not
+          conditions:
+            - condition: state
+              entity_id: media_player.tv
+              attribute: source
+              state: Jellyfin
+      then:
+        - action: media_player.select_source
+          target:
+            entity_id: media_player.tv
+          data:
+            source: Jellyfin
+    - alias: Aspetta che l'app si colleghi al server (max 40 s)
+      repeat:
+        sequence:
+          - delay: 2
+          - action: rest_command.jellyfin_sessioni
+            data:
+              secondi: 86400
+            response_variable: ris
+        until:
+          - condition: template
+            value_template: >
+              {{ (ris.content | default([])) | selectattr('DeviceName', 'eq', 'DEVICE_NAME')
+                 | selectattr('SupportsRemoteControl') | list | count > 0 or repeat.index >= 20 }}
+    - alias: Manda il titolo a tutte le sessioni della TV
+      repeat:
+        for_each: >
+          {{ (ris.content | default([])) | selectattr('DeviceName', 'eq', 'DEVICE_NAME') | map(attribute='Id') | list }}
+        sequence:
+          - action: rest_command.jellyfin_riproduci
+            continue_on_error: true
+            data:
+              sessione: "{{ repeat.item }}"
+              media_id: "{{ media_id }}"

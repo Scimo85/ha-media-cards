@@ -1,0 +1,62 @@
+# Esempi di configurazione delle card (modifica plancia › aggiungi scheda › Manuale).
+# Le entità media_player.* e script.* sono esempi: usate le vostre.
+
+# Cosa si sta guardando su Jellyfin, con pausa e stop (sparisce se non c'è niente)
+type: custom:jellyfin-now-card
+devices:                       # opzionale: raggruppa le sessioni di un dispositivo
+  - name: TV
+    players: [media_player.tv_jellyfin, media_player.tv_jellyfin_2]
+    power: media_player.tv     # se la TV è spenta, la sessione "appesa" non si mostra
+---
+# Catalogo film e serie dalla fonte multimediale Jellyfin di HA
+type: custom:media-catalog-card
+title: Catalogo
+source: media-source://jellyfin
+jellyfin_url: http://192.168.1.10:8096   # opzionale: link "Apri in Jellyfin"
+refresh_minutes: 30
+devices:                       # opzionale: dispositivi sempre in elenco, avviati da uno script
+  - name: TV
+    icon: mdi:television
+    players: [media_player.tv_jellyfin]
+    script: script.jellyfin_tv  # riceve media_id e media_type (vedi examples/script_tv.yaml)
+---
+# TV in diretta (Live TV di Jellyfin)
+type: custom:livetv-card
+title: TV in diretta
+refresh_minutes: 5
+groups:
+  - name: Canali
+    from: 1
+    to: 9999
+devices:
+  - name: TV
+    icon: mdi:television
+    players: [media_player.tv_jellyfin]
+    script: script.jellyfin_tv
+---
+# Radio italiane (elenco da scripts/radio_sync.py)
+type: custom:radio-card
+title: Radio
+browser: true                  # "Questo dispositivo": suona nel browser
+alexa_type: TUNEIN
+devices:
+  - name: Echo cucina
+    entity: media_player.echo_cucina
+    icon: mdi:speaker
+    mode: alexa                # Alexa Media Player: cerca la radio per nome
+---
+# Musica (libreria Jellyfin, elenco da scripts/music_sync.py)
+type: custom:music-card
+title: Musica
+browser: true
+devices:
+  - name: TV
+    script: script.jellyfin_tv
+    icon: mdi:television
+---
+# Giochi (RomM, elenco da scripts/romm_sync.py)
+type: custom:romm-games-card
+title: Giochi
+romm_url: http://192.168.1.10:8093
+romm_url_remote: ""            # opzionale: indirizzo usato fuori casa (es. Tailscale)
+refresh_minutes: 5
