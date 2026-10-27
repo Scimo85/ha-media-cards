@@ -16,8 +16,12 @@ condivise così come sono. Testi dell'interfaccia in italiano.
   <img src="docs/screenshots/ricerca.jpg" width="240" alt="Ricerca torrent">
   <img src="docs/screenshots/download-attivo.jpg" width="240" alt="Download in corso">
 </p>
+<p align="center">
+  <img src="docs/screenshots/radio.jpg" width="240" alt="Radio">
+  <img src="docs/screenshots/musica.jpg" width="240" alt="Musica">
+</p>
 
-<sub>Qui dentro la plancia Aurora Glass v3 (con <code>aurora-plus-card</code>); titoli, locandine e nomi dei dispositivi sono sfocati.</sub>
+<sub>Qui dentro la plancia Aurora Glass v3 (con <code>aurora-plus-card</code>); titoli, copertine e nomi dei dispositivi sono sfocati.</sub>
 
 | Card | Cosa fa | Richiede |
 |---|---|---|
