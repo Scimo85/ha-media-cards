@@ -34,7 +34,8 @@ shared as they are. **The user interface is in Italian.**
 | `music-card` | Albums and artists with covers; listen in the browser (even with the screen locked) or on a device | Jellyfin + `scripts/music_sync.py` |
 | `romm-games-card` | Consoles grouped by brand, games with covers; "Play" in the browser | [RomM](https://github.com/rommapp/romm) + `scripts/romm_sync.py` |
 | `qbit-search-card` | Search with qBittorrent's search plugins, category and "Italian only" filters, destination folder (Movies, TV shows › show, Music, Games) and download | qBittorrent with WebUI and search plugins |
-| `aurora-plus-card` | Adds a **Media** page to the bottom bar of the [Aurora Glass v3](https://github.com/lucalux00/aurora-glass-v3) card, containing the cards above | Aurora Glass v3 (not included) |
+| `network-map-card` | Home network map: green/red light for connected/offline devices, IP address, battery. A drill-down "orbit" on PC/tablet (tap a node to open the level below), nested panels on phones; reads devices from the HA registry and, with Zigbee2MQTT, the real Zigbee mesh | nothing (Zigbee2MQTT optional) |
+| `aurora-plus-card` | Adds pages to the bottom bar of the [Aurora Glass v3](https://github.com/lucalux00/aurora-glass-v3) card: **Media** with the cards above, plus any others via `views` (e.g. **Rete** with `network-map-card`) | Aurora Glass v3 (not included) |
 
 ## Installation
 
