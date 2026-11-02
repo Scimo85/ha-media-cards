@@ -70,3 +70,31 @@ film_path: /downloads/film          # percorsi visti dal container qBittorrent
 series_path: /downloads/serietv     # (una sottocartella per serie)
 music_path: /downloads/musica
 games_path: /downloads/giochi
+---
+# Mappa della rete (network-map-card): luce verde/rossa, IP, batteria; orbita a cascata su PC/tablet, pannelli sul telefono.
+# I dispositivi arrivano da soli dal registro di HA: qui si dice solo in quale ramo metterli e qualche correzione.
+type: custom:network-map-card
+title: Rete di casa
+root: { name: Router, ip: 192.168.1.1 }          # entity: binary_sensor.<ping del router> per lo stato vero
+branches:                                         # un ramo per gruppo di integrazioni (nome come in Impostazioni › Integrazioni)
+  - { id: server, name: Server di casa, icon: mdi:server, ip: 192.168.1.10, integrations: [nut, zwave_js, ibeacon] }
+  - { id: media, name: TV e intrattenimento, icon: mdi:television-play, integrations: [webostv, dlna_dmr, playstation_network, alexa_media] }
+  - { id: smart, name: Casa smart Wi‑Fi, icon: mdi:home-automation, integrations: [tuya, shelly, reolink, ping] }
+  - { id: telefoni, name: Telefoni, icon: mdi:cellphone, integrations: [mobile_app] }
+devices:                                          # per nome del dispositivo
+  Zigbee2MQTT Bridge: { name: Zigbee2MQTT, parent: "USB Z-Wave & Zigbee Controller" }
+  Smoke Alarm: { parent: Gateway zigbee }
+  Lavatrice: { status: availability }             # il suo sensore "connectivity" è il controllo remoto, non la rete
+exclude_devices: [ Ovunque, This Device ]
+---
+# La pagina "Rete" nella barra di Aurora (aurora-plus-card v1.1+): stesso formato di "media"
+type: custom:aurora-plus-card
+aurora: { type: custom:aurora-v3-card }           # ...la vostra config di Aurora
+views:
+  - id: rete
+    label: Rete
+    icon: mdi:lan
+    pages:
+      - name: Rete
+        cards:
+          - type: custom:network-map-card         # ...la config qui sopra

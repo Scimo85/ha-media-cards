@@ -1,16 +1,18 @@
-/* aurora-plus-card v1.0.0 — la plancia Aurora (aurora-v3-card, non modificata) con in più la pagina "Media" nella barra in basso:
-   sotto-schede con le card della dashboard Media, vestite con lo stile di Aurora (variabili --qa-* delle card di ~/ha-cards
+/* aurora-plus-card v1.1.0 — la plancia Aurora (aurora-v3-card, non modificata) con in più pagine nuove nella barra in basso
+   ("Media", "Rete"…): sotto-schede con le card che volete, vestite con lo stile di Aurora (variabili --qa-* delle card di ~/ha-cards
    e variabili del tema di HA per le card native), colori compresi: seguono l'ora del giorno e il tema chiaro/scuro di Aurora.
    Config:
      type: custom:aurora-plus-card
      aurora: { ...config di aurora-v3-card... }
-     media:
+     media:                     # la pagina Media (come nella v1.0)
        label: Media
        icon: mdi:play-box-multiple
        pages: [ { name: "Film e serie", icon: "mdi:movie-open", cards: [ {type: ...}, ... ] }, ... ]
+     views:                     # altre pagine, dopo Media e nello stesso formato; con una sola sotto-scheda la riga delle schede non si vede
+       - { id: rete, label: Rete, icon: mdi:lan, pages: [ { name: Rete, cards: [ { type: custom:network-map-card } ] } ] }
 */
 const APC_STYLE = `
-#view-media { display: flex; flex-direction: column; gap: 16px;
+.apc-view { display: flex; flex-direction: column; gap: 16px;
   /* card di ~/ha-cards (tema-variabili.py) */
   --qa-card-bg: var(--surface);
   --qa-card-border: 1px solid var(--border);
@@ -38,30 +40,38 @@ const APC_STYLE = `
   --state-icon-color: var(--acc-text);
   --divider-color: var(--border);
 }
-#view-media[hidden] { display: none; }
-/* nella pagina Media non servono i suggerimenti di Aurora ("Tocca scene e luci"…) */
+.apc-view[hidden] { display: none; }
+/* nelle pagine aggiunte non servono i suggerimenti di Aurora ("Tocca scene e luci"…) */
 :host([data-apc-media]) .hints { display: none; }
-#view-media .mtabs { display: flex; gap: 8px; flex-wrap: wrap; }
-#view-media .mtabs button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 10px 12px; border-radius: 99px;
+.apc-view .mtabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.apc-view .mtabs button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 10px 12px; border-radius: 99px;
   font-family: var(--font-ui); font-size: .86rem; font-weight: 700; color: var(--dim); cursor: pointer;
   background: color-mix(in srgb, var(--bg) 45%, transparent); border: 1px solid var(--border); backdrop-filter: blur(8px);
   transition: color .2s, background .3s, transform .3s var(--spring); -webkit-tap-highlight-color: transparent; }
-#view-media .mtabs button ha-icon { --mdc-icon-size: 18px; color: var(--acc-text); }
-#view-media .mtabs button:hover { color: var(--text); transform: translateY(-2px); }
-#view-media .mtabs button[aria-current="page"] { color: #fff; border-color: transparent;
+.apc-view .mtabs button ha-icon { --mdc-icon-size: 18px; color: var(--acc-text); }
+.apc-view .mtabs button:hover { color: var(--text); transform: translateY(-2px); }
+.apc-view .mtabs button[aria-current="page"] { color: #fff; border-color: transparent;
   background: linear-gradient(135deg, var(--a1), var(--a2)); box-shadow: 0 10px 24px -8px var(--a1); }
-#view-media .mtabs button[aria-current="page"] ha-icon { color: #fff; }
-#view-media .mpage { display: flex; flex-direction: column; gap: 16px; }
-#view-media .mpage[hidden] { display: none; }
-#view-media .mpage > * { display: block; }
+.apc-view .mtabs button[aria-current="page"] ha-icon { color: #fff; }
+.apc-view .mpage { display: flex; flex-direction: column; gap: 16px; }
+.apc-view .mpage[hidden] { display: none; }
+.apc-view .mpage > * { display: block; }
+.apc-view .mtabs:empty, .apc-view .mtabs.single { display: none; }
+/* con più di una pagina aggiunta la barra sul telefono si stringe un po', così ci stanno tutti i pulsanti */
+:host([data-apc-many]) .dock { max-width: calc(100vw - 12px); }
+@media (max-width: 560px) {
+  :host([data-apc-many]) .dock { gap: 2px; padding: 6px; }
+  :host([data-apc-many]) .dock button { min-width: 0; flex: 1 1 0; padding: 9px 3px 7px; }
+  :host([data-apc-many]) .dock button span { font-size: .56rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  :host([data-apc-many]) .dock .sep { margin: 8px 1px; }
+}
 `;
 
 class AuroraPlusCard extends HTMLElement {
   constructor() {
     super();
     this._root = this.attachShadow({ mode: "open" });
-    this._pages = [];      // { conf, el, cards: [elementi], built }
-    this._page = 0;
+    this._views = [];      // { id, conf, sec, btn, pages: [{ conf, el, tab, cards, built }], page }
   }
 
   setConfig(config) {
@@ -106,10 +116,22 @@ class AuroraPlusCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (this._aurora && this._aurora.setConfig) this._aurora.hass = hass;
-    for (const p of this._pages) for (const c of p.cards) c.hass = hass;
+    for (const v of this._views) for (const p of v.pages) for (const c of p.cards) c.hass = hass;
   }
 
-  // La pagina Media va dentro lo shadow DOM di Aurora: così eredita le sue variabili (colori dell'ora, tema, caratteri)
+  // le pagine aggiunte: prima Media (chiave "media", come nella v1.0), poi quelle di "views"
+  _viewConfs() {
+    const out = [];
+    if (this._config.media) out.push(Object.assign({ label: "Media", icon: "mdi:play-box-multiple" }, this._config.media, { id: "media" }));
+    for (const v of this._config.views || []) {
+      const id = String(v.id || v.label || "pagina").toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+      if (["home", "sic", "en", "media"].includes(id) || out.some((o) => o.id === id)) continue;
+      out.push(Object.assign({ label: v.label || id, icon: "mdi:view-dashboard" }, v, { id }));
+    }
+    return out;
+  }
+
+  // Le pagine vanno dentro lo shadow DOM di Aurora: così ereditano le sue variabili (colori dell'ora, tema, caratteri)
   _inject() {
     const ar = this._aurora && this._aurora.shadowRoot;
     const dock = ar && ar.querySelector(".dock");
@@ -119,61 +141,71 @@ class AuroraPlusCard extends HTMLElement {
       if (!this._retry) this._retry = setTimeout(() => { this._retry = null; this._inject(); }, 300);
       return;
     }
-    const media = this._config.media || {};
+    this._dock = dock;
     if (!ar.querySelector("#apc-style")) {
       const st = document.createElement("style");
       st.id = "apc-style";
       st.textContent = APC_STYLE;
       ar.appendChild(st);
     }
-    let btn = dock.querySelector('[data-view="media"]');
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.view = "media";
-      btn.innerHTML = '<i class="mdi"><ha-icon></ha-icon></i><span></span>';
-      const after = dock.querySelector('[data-view="en"]') || dock.querySelector("[data-view]:last-of-type");
-      after.after(btn);
-      btn.addEventListener("click", () => this._show());
-      // gli altri pulsanti della barra li gestisce Aurora: basta nascondere la pagina Media
-      for (const b of dock.querySelectorAll("[data-view]:not([data-view=media]), #dock-scenes")) {
-        b.addEventListener("click", () => this._hide());
+    // gli altri pulsanti della barra li gestisce Aurora: basta nascondere le pagine aggiunte
+    if (!this._hooked) {
+      this._hooked = true;
+      for (const b of dock.querySelectorAll("[data-view], #dock-scenes")) b.addEventListener("click", () => this._hideAll());
+    }
+    const confs = this._viewConfs();
+    // pagine tolte dalla config
+    for (const v of this._views) if (!confs.some((c) => c.id === v.id)) {
+      for (const p of v.pages) for (const c of p.cards) c.remove();
+      v.sec.remove(); v.btn.remove();
+    }
+    const old = this._views;
+    let after = dock.querySelector('[data-view="en"]') || [...dock.querySelectorAll("[data-view]")].pop();
+    this._views = confs.map((conf) => {
+      let v = old.find((o) => o.id === conf.id);
+      if (!v) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.apc = conf.id;
+        btn.innerHTML = '<i class="mdi"><ha-icon></ha-icon></i><span></span>';
+        btn.addEventListener("click", () => this._show(v));
+        const sec = document.createElement("section");
+        sec.id = "view-" + conf.id;
+        sec.className = "apc-view enter";
+        sec.hidden = true;
+        sec.innerHTML = '<div class="mtabs" role="group"></div><div class="mpages"></div>';
+        const foot = main.querySelector("footer");
+        main.insertBefore(sec, foot || null);
+        v = { id: conf.id, btn, sec, pages: [], page: 0 };
       }
-    }
-    btn.querySelector("ha-icon").setAttribute("icon", media.icon || "mdi:play-box-multiple");
-    btn.querySelector("span").textContent = media.label || "Media";
-
-    let sec = ar.querySelector("#view-media");
-    if (!sec) {
-      sec = document.createElement("section");
-      sec.id = "view-media";
-      sec.className = "enter";
-      sec.hidden = true;
-      sec.setAttribute("aria-label", media.label || "Media");
-      sec.innerHTML = '<div class="mtabs" role="group"></div><div class="mpages"></div>';
-      const foot = main.querySelector("footer");
-      main.insertBefore(sec, foot || null);
-    }
-    this._sec = sec;
-    this._btn = btn;
-    this._dock = dock;
-    this._buildTabs();
+      after.after(v.btn);
+      after = v.btn;
+      v.conf = conf;
+      v.btn.querySelector("ha-icon").setAttribute("icon", conf.icon);
+      v.btn.querySelector("span").textContent = conf.label;
+      v.sec.setAttribute("aria-label", conf.label);
+      this._buildTabs(v);
+      return v;
+    });
+    if (this._views.length > 1) this._aurora.setAttribute("data-apc-many", "");
+    else this._aurora.removeAttribute("data-apc-many");
   }
 
-  _buildTabs() {
-    const pages = (this._config.media && this._config.media.pages) || [];
-    const tabs = this._sec.querySelector(".mtabs");
-    const box = this._sec.querySelector(".mpages");
+  _buildTabs(v) {
+    const pages = v.conf.pages || (v.conf.cards ? [{ name: v.conf.label, cards: v.conf.cards }] : []);
+    const tabs = v.sec.querySelector(".mtabs");
+    const box = v.sec.querySelector(".mpages");
     tabs.innerHTML = "";
     box.innerHTML = "";
-    for (const p of this._pages) for (const c of p.cards) c.remove();
-    this._pages = pages.map((conf, i) => {
+    tabs.classList.toggle("single", pages.length < 2);
+    for (const p of v.pages) for (const c of p.cards) c.remove();
+    v.pages = pages.map((conf, i) => {
       const b = document.createElement("button");
       b.type = "button";
       b.innerHTML = '<ha-icon></ha-icon><span></span>';
       b.querySelector("ha-icon").setAttribute("icon", conf.icon || "mdi:play");
       b.querySelector("span").textContent = conf.name || `Pagina ${i + 1}`;
-      b.addEventListener("click", () => this._open(i));
+      b.addEventListener("click", () => this._open(v, i));
       tabs.appendChild(b);
       const el = document.createElement("div");
       el.className = "mpage";
@@ -181,8 +213,8 @@ class AuroraPlusCard extends HTMLElement {
       box.appendChild(el);
       return { conf, el, tab: b, cards: [], built: false };
     });
-    if (this._page >= this._pages.length) this._page = 0;
-    if (!this._sec.hidden) this._open(this._page);
+    if (v.page >= v.pages.length) v.page = 0;
+    if (!v.sec.hidden) this._open(v, v.page);
   }
 
   // Le card di una sotto-scheda si creano la prima volta che la si apre, poi restano (es. la radio continua a suonare)
@@ -207,9 +239,9 @@ class AuroraPlusCard extends HTMLElement {
     }
   }
 
-  _open(i) {
-    this._page = i;
-    this._pages.forEach((p, k) => {
+  _open(v, i) {
+    v.page = i;
+    v.pages.forEach((p, k) => {
       const on = k === i;
       p.el.hidden = !on;
       if (on) p.tab.setAttribute("aria-current", "page"); else p.tab.removeAttribute("aria-current");
@@ -217,28 +249,30 @@ class AuroraPlusCard extends HTMLElement {
     });
   }
 
-  _show() {
+  _show(v) {
     const ar = this._aurora.shadowRoot;
     // prima si torna a Casa con il pulsante di Aurora (così ferma le telecamere della pagina Sicurezza), poi si nasconde
     const home = this._dock.querySelector('[data-view="home"]');
     if (home && home.getAttribute("aria-current") !== "page") home.click();
-    for (const v of ar.querySelectorAll("main > section:not(#view-media)")) v.hidden = true;
-    for (const b of this._dock.querySelectorAll("[data-view]")) b.removeAttribute("aria-current");
-    this._btn.setAttribute("aria-current", "page");
+    for (const s of ar.querySelectorAll("main > section")) s.hidden = s !== v.sec;
+    for (const b of this._dock.querySelectorAll("[data-view], [data-apc]")) b.removeAttribute("aria-current");
+    v.btn.setAttribute("aria-current", "page");
     this._aurora.setAttribute("data-apc-media", "");
-    this._sec.hidden = false;
-    this._sec.classList.remove("enter");
-    void this._sec.offsetWidth;
-    this._sec.classList.add("enter");
-    this._open(this._page);
+    v.sec.hidden = false;
+    v.sec.classList.remove("enter");
+    void v.sec.offsetWidth;
+    v.sec.classList.add("enter");
+    this._open(v, v.page);
     const sc = ar.querySelector("#scroll");
     if (sc) sc.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  _hide() {
-    if (!this._sec || this._sec.hidden) return;
-    this._sec.hidden = true;
-    this._btn.removeAttribute("aria-current");
+  _hideAll() {
+    for (const v of this._views) {
+      if (v.sec.hidden) continue;
+      v.sec.hidden = true;
+      v.btn.removeAttribute("aria-current");
+    }
     this._aurora.removeAttribute("data-apc-media");
   }
 
@@ -254,7 +288,7 @@ window.customCards = window.customCards || [];
 if (!window.customCards.some((c) => c.type === "aurora-plus-card")) {
   window.customCards.push({
     type: "aurora-plus-card",
-    name: "Aurora + Media",
-    description: "Plancia Aurora con la pagina Media (card della dashboard Media nello stile di Aurora)",
+    name: "Aurora + pagine",
+    description: "Plancia Aurora con pagine in più nella barra (Media, Rete…), nello stile di Aurora",
   });
 }
